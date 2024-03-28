@@ -27,7 +27,7 @@ Panels:
   - Class: rviz/Time
     Name: Time
     SyncMode: 0
-    SyncSource: PointCloud2
+    SyncSource: LaserScan
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -118,35 +118,6 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        mid_vlp16_leg1:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        mid_vlp16_leg2:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        mid_vlp16_leg3:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        mid_vlp16_leg4:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        mid_vlp16_mount:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        mid_vlp16_plate:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
         navsat_link:
           Alpha: 1
           Show Axes: false
@@ -180,16 +151,6 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        velodyne:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        velodyne_base_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
       Name: RobotModel
       Robot Description: robot_description
       TF Prefix: ""
@@ -246,8 +207,8 @@ Visualization Manager:
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
-            Max Value: 9.14406681060791
-            Min Value: -0.8228924870491028
+            Max Value: 6.078736305236816
+            Min Value: -1.1319925785064697
             Value: true
           Axis: X
           Channel Name: intensity
@@ -359,26 +320,20 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Class: rviz/ThirdPersonFollower
-      Distance: 4
+      Angle: 0
+      Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
-      Field of View: 0.8999999761581421
-      Focal Point:
-        X: 0
-        Y: 0
-        Z: 0
-      Focal Shape Fixed Size: true
-      Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6000000238418579
+      Scale: 51.41316604614258
       Target Frame: base_link
-      Yaw: 3.1500000953674316
+      X: 1.8782414197921753
+      Y: 1.8467566967010498
     Saved:
       - Class: rviz/ThirdPersonFollower
         Distance: 4
