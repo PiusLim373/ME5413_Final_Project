@@ -18,4 +18,7 @@
 
   <node ns="me5413_world" pkg="me5413_world" type="goal_publisher_node" name="goal_publisher_node" output="screen" />
 
+  <node type="number_detector.py" name="number_detector" pkg="pcl_utils" output="screen"/>
+  <node type="pointcloud_transformer" name="pointcloud_transformer" pkg="pcl_utils" output="screen"/>
+
 </launch>

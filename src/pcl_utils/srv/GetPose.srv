@@ -1,0 +1,11 @@
+int16 box_number
+---
+int16 success_code
+geometry_msgs/PoseStamped coor_wrt_map
+
+#enum
+int16 SUCCESS=0
+int16 FAILED_WITH_NO_DETECTION=1
+int16 FAILED_WITH_NUMBER_DETECTED_LEFT=2
+int16 FAILED_WITH_NUMBER_DETECTED_MID=3
+int16 FAILED_WITH_NUMBER_DETECTED_RIGHT=4
