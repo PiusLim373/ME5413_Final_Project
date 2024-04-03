@@ -20,6 +20,7 @@
 
 #include <std_msgs/Int16.h>
 #include <std_msgs/String.h>
+#include <actionlib_msgs/GoalID.h>
 
 namespace rviz_panel
 {
@@ -69,6 +70,7 @@ class simplePanel : public rviz::Panel
     // Contorl Buttons
     void on_button_regen_clicked();
     void on_button_clear_clicked();
+    void on_button_cancel_goal_clicked();
 
  protected:
   // UI pointer
@@ -77,6 +79,7 @@ class simplePanel : public rviz::Panel
   ros::NodeHandle nh_;
   ros::Publisher pub_goal_;
   ros::Publisher pub_respawn_;
+  ros::Publisher movebase_cancel_goal_;
   std_msgs::String goal_name_msg_;
   std_msgs::Int16 regen_cmd_msg_;
 };

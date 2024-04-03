@@ -23,6 +23,7 @@ namespace rviz_panel
         // Define ROS publisher
         this->pub_goal_ = nh_.advertise<std_msgs::String>("/rviz_panel/goal_name", 1);
         this->pub_respawn_ = nh_.advertise<std_msgs::Int16>("/rviz_panel/respawn_objects", 1);
+        this->movebase_cancel_goal_ = nh_.advertise<actionlib_msgs::GoalID>("/move_base/cancel", 1);
         // sub_error_to_goal_ = nh_.subscribe("/interactive_tools/error_to_goal", 1, &GoalPublisherNode::goalPoseCallback, this);
 
         // Connect the clicked signals to slots
@@ -40,6 +41,7 @@ namespace rviz_panel
 
         connect(ui_->pushButton_regen, SIGNAL(clicked()), this, SLOT(on_button_regen_clicked()));
         connect(ui_->pushButton_clear, SIGNAL(clicked()), this, SLOT(on_button_clear_clicked()));
+        connect(ui_->pushButton_cancel_goal, SIGNAL(clicked()), this, SLOT(on_button_cancel_goal_clicked()));
 
         // Initialization
         goal_name_msg_.data = "";
@@ -127,6 +129,13 @@ namespace rviz_panel
         ui_->label_status->setText("Please select a goal pose");
         this->regen_cmd_msg_.data = 0;
         this->pub_respawn_.publish(this->regen_cmd_msg_);
+    }
+    void simplePanel::on_button_cancel_goal_clicked()
+    {
+        ROS_INFO_STREAM("Cancelling move base goal");
+        ui_->label_status->setText("Goal Cancelled, please select a goal pose");
+        actionlib_msgs::GoalID cancel_goal;
+        this->movebase_cancel_goal_.publish(cancel_goal);
     }
 
     /**
