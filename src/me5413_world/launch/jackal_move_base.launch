@@ -11,8 +11,9 @@
     <rosparam file="$(find me5413_world)/config/base_local_planner_params.yaml" command="load" />
     <rosparam file="$(find me5413_world)/config/move_base_params.yaml" command="load" />
     
-    <param name="base_global_planner" type="string" value="navfn/NavfnROS" />
+    <param name="base_global_planner" type="string" value="global_planner/GlobalPlanner" />
     <param name="base_local_planner" value="dwa_local_planner/DWAPlannerROS"/>
+    <!-- <param name="base_global_planner" type="string" value="navfn/NavfnROS" /> -->
     <!-- <param name="base_local_planner" value="base_local_planner/TrajectoryPlannerROS"/> -->
     
     <remap from="odom" to="odometry/filtered" />

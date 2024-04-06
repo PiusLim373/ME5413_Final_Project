@@ -20,5 +20,6 @@
 
   <node type="number_detector.py" name="number_detector" pkg="pcl_utils" output="screen"/>
   <node type="pointcloud_transformer" name="pointcloud_transformer" pkg="pcl_utils" output="screen"/>
+  <node type="planner_node.py" name="box_navigator" pkg="smach_planner" output="screen"/>
 
 </launch>

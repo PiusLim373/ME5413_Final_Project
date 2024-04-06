@@ -108,15 +108,29 @@ class NumberDetector:
         ros_image_msg = self.bridge.cv2_to_imgmsg(image_to_pub, encoding="bgr8")
         self.number_detector_output_pub.publish(ros_image_msg)
 
-        # if dont have number of interest, return with successcode 0
+        # if dont have number of interest, return with a failure
         if not str(req.box_number) in all_digit_detected_data.keys():
             res.success_code = GetPoseResponse().FAILED_WITH_NO_DETECTION
             return res
+
+        # if more than 2 number detected, most likely is a false detection from the background, rejecting
+        if len(all_digit_detected_data[str(req.box_number)]) > 2:
+            rospy.loginfo(
+                f"[Number Detector] More than 2 indicies of number {req.box_number} found, possible false detection, ignoring"
+            )
+            res.success_code = GetPoseResponse().FAILED_WITH_NO_DETECTION
+            return res
+
         # average the pixel count for multiple detection, changes are we are looking the box at a slanted angle
         i = 0
         sum_u = 0
         sum_v = 0
-        for x in all_digit_detected_data[str(req.box_number)]:
+        for index, x in enumerate(all_digit_detected_data[str(req.box_number)]):
+            # if the horizontal diff is more than 400 or vertical diff is more than 50, possible false detection as well, rejecting
+            if index == 1 and (abs(x[0] - sum_u) > 400 or abs(x[1] - sum_v) > 50):
+                rospy.loginfo(f"[Number Detector] 2 indicies are too far apart, possible false detection, ignoring")
+                res.success_code = GetPoseResponse().FAILED_WITH_NO_DETECTION
+                return res
             sum_u += x[0]
             sum_v += x[1]
             i += 1
@@ -152,10 +166,6 @@ class NumberDetector:
             data.pose.orientation.w = 1.0
             res.success_code = GetPoseResponse().SUCCESS
             res.coor_wrt_map = coor_wrt_map
-
-            # ===================================================================== this part only for debugging, shouldnt directly publish goal to move base here!!!
-            self.goal_pose_pub.publish(data)
-            rospy.loginfo(f"[Number Detector] goal send to move base: {data}")
 
             return res
 
