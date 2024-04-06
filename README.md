@@ -38,6 +38,14 @@ NUS ME5413 Autonomous Mobile Robotics Final Project
   * `jackal_navigation`
   * `velodyne_simulator`
   * `teleop_twist_keyboard`
+  * `realsense2_camera`
+  * `realsense2_camera_msgs`
+  * `realsense2_description`
+  * `spatio_temporal_voxel_layer`
+  * `global_planner`
+  * `pcl`
+  * `cv_bridge`
+  * `smach_ros`
 * And this [gazebo_model](https://github.com/osrf/gazebo_models) repositiory
 
 ## Installation
@@ -60,6 +68,15 @@ cd ME5413_Final_Project
 
 # Install all dependencies
 rosdep install --from-paths src --ignore-src -r -y
+sudo apt install ros-noetic-librealsense2*
+sudo apt install ros-noetic-realsense2-*
+sudo apt install ros-noetic-spatio-temporal-voxel-layer
+sudo apt install ros-noetic-global-planner
+sudo apt install ros-noetic-pcl-*
+sudo apt install ros-noetic-cv-bridge
+sudo apt install ros-noetic-smach-ros
+pip install pytesseract
+
 
 # Build
 catkin_make
