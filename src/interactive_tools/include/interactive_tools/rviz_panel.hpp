@@ -71,6 +71,7 @@ class simplePanel : public rviz::Panel
     void on_button_regen_clicked();
     void on_button_clear_clicked();
     void on_button_cancel_goal_clicked();
+    void on_button_skip_forward_clicked();
 
  protected:
   // UI pointer
@@ -80,6 +81,7 @@ class simplePanel : public rviz::Panel
   ros::Publisher pub_goal_;
   ros::Publisher pub_respawn_;
   ros::Publisher movebase_cancel_goal_;
+  ros::Publisher skip_forward_pub_;
   std_msgs::String goal_name_msg_;
   std_msgs::Int16 regen_cmd_msg_;
 };
