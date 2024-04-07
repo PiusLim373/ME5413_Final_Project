@@ -19,7 +19,6 @@ box_selected = False  # Flag to indicate if a box has been selected
 preemption_requested = False
 cancel_preemption_requested = False
 
-
 # Helper function to get room pose
 def get_room_pose():
     pose = PoseStamped()
@@ -36,8 +35,7 @@ def cancel_goal_cb(msg):
     # Set the flag to true whenever any message is received on this topic
     cancel_preemption_requested = True
     rospy.loginfo("Cancel goal requested.")
-    
-    
+      
 # Initialize the action client
 action_client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
 
@@ -60,10 +58,6 @@ def rviz_panel_cb(msg):
         else:
             rospy.loginfo(f"Box {global_box_num} re-selected.")
             
-
-
-
-
 class Preempted(smach.State):
     def __init__(self):
         # Only an 'idle' outcome that leads back to the IDLE state
@@ -76,16 +70,12 @@ class Preempted(smach.State):
         global_box_num = ""
         return 'idle'
 
-
-
 # State 0: Idle
 class Idle(smach.State):
     def __init__(self):
         smach.State.__init__(self, outcomes=['box_selected', 'idle'],
                              output_keys=['target_pose', 'box_num', 'pose_adjustment_counter'],
                              input_keys=['box_selected', 'target_pose'])
-        rospy.Subscriber("/rviz_panel/goal_name", String, rviz_panel_cb)
-        rospy.Subscriber("/move_base/cancel", GoalID, cancel_goal_cb)
         
     def execute(self, userdata):
         global box_selected, global_box_num, global_target_pose
@@ -227,8 +217,8 @@ class StartRecognitionProcedure(smach.State):
             rospy.logerr("Service call failed: %s" % e)
             # If the service call fails, also attempt to retry recognition
             return 'retry_recognition'
-
-    
+ 
+ # State 3B: Adjustment For Recognition
 class AdjustPositionForRecognition(smach.State):
     def __init__(self):
         smach.State.__init__(self, outcomes=['retry_recognition', 'retry_adjustment', 'failed', 'preempted'],
@@ -236,14 +226,22 @@ class AdjustPositionForRecognition(smach.State):
                              output_keys=['turn_counter', 'move_counter', 'target_pose'])
         self.client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
         self.client.wait_for_server()
+        self.skip_requested = False
+    
+    def skipahead_cb(self, msg):
+        self.skip_requested = True
+        rospy.loginfo("Skip ahead requested.")
 
     def execute(self, userdata):
+        self.skip_subscriber = rospy.Subscriber("/skip_ahead", String, self.skipahead_cb)
         global preemption_requested, cancel_preemption_requested
         if preemption_requested:
             preemption_requested = False  # Reset for next action
+            self.skip_subscriber.unregister()
             return 'preempted'  # Use the outcome that transitions to IDLE
         if cancel_preemption_requested:
             cancel_preemption_requested = False  # Reset the flag
+            self.skip_subscriber.unregister()
             return 'preempted'
         
         rospy.loginfo('Adjusting position for another recognition attempt.')
@@ -290,10 +288,12 @@ class AdjustPositionForRecognition(smach.State):
                 need_to_move = True
             elif userdata.turn_counter == 3:
                 rospy.loginfo("Terminating after full rotation.")
+                self.skip_subscriber.unregister()
                 return 'failed'
             
             userdata.turn_counter += 1
             userdata.move_counter = 0
+            self.skip_subscriber.unregister()
             return 'retry_recognition'
         
         else:
@@ -311,6 +311,12 @@ class AdjustPositionForRecognition(smach.State):
             userdata.move_counter += 1
         
         if need_to_move:
+            if self.skip_requested:
+                rospy.loginfo("Skip requested, proceeding to retry adjustment.")
+                self.skip_requested = False  # Reset the skip request flag
+                self.skip_subscriber.unregister()
+                return 'retry_adjustment'
+            
             # After adjusting target_pose, send a new goal to move_base
             new_goal = MoveBaseGoal()
             new_goal.target_pose.header.frame_id = "map"
@@ -319,39 +325,63 @@ class AdjustPositionForRecognition(smach.State):
         
             # Send the new goal to move_base
             self.client.send_goal(new_goal)
-            self.client.wait_for_result(rospy.Duration(300.0))  # Adjust timeout as needed
             
-            action_state = self.client.get_state()
-            if action_state == actionlib.GoalStatus.SUCCEEDED:
-                rospy.loginfo("Robot moved to the new position successfully.")
-                return 'retry_recognition'
-            elif action_state == actionlib.GoalStatus.ABORTED:
-                rospy.loginfo("Obstacle detected on the spot.")
-                
-                # Decide on the next action: retry with a new adjustment or handle as a failure
-                # For this example, we'll choose to retry
-                return 'retry_adjustment'
-            else:
-                rospy.loginfo("Failed to move the robot to the new position.")
-                return 'retry_adjustment'
+            while not rospy.is_shutdown():
+                if self.skip_requested:
+                    rospy.loginfo("Skip requested, cancelling current goal and proceeding to retry adjustment.")
+                    self.skip_requested = False  # Reset the skip request flag
+                    self.skip_subscriber.unregister()
+                    return 'retry_adjustment'
 
+                if self.client.wait_for_result(rospy.Duration(0.5)):  # Check every 0.5 seconds
+                    action_state = self.client.get_state()
+                    if action_state == actionlib.GoalStatus.SUCCEEDED:
+                        rospy.loginfo("Robot moved to the new position successfully.")
+                        self.skip_subscriber.unregister()
+                        return 'retry_recognition'
+                    elif action_state == actionlib.GoalStatus.ABORTED:
+                        rospy.loginfo("Obstacle detected on the spot.")
+                        self.skip_requested = False 
+                        self.skip_subscriber.unregister()
+                        return 'retry_adjustment'
+                    else:
+                        rospy.loginfo("Failed to move the robot to the new position.")
+                        self.skip_subscriber.unregister()
+                        self.skip_requested = False 
+                        return 'retry_adjustment'
             
+        
+        # If moving was not necessary but skip was requested during state execution
+        if self.skip_requested:
+            rospy.loginfo("Skip requested, but no navigation was needed. Proceeding to retry adjustment.")
+            self.skip_requested = False
+            self.skip_subscriber.unregister()
+            return 'retry_adjustment'
+
+ # State 3C: Minor Adjustment For Recognition            
 class MinorAdjustment(smach.State):
     def __init__(self):
         smach.State.__init__(self, outcomes=['retry_recognition','retry_adjustment','preempted'],
                              input_keys=['target_pose', 'minor_counter', 'turn_counter', 'minor_pose', 'detect_code'],
                              output_keys=['target_pose', 'minor_counter', 'turn_counter', 'minor_pose','detect_code'])
-        
         self.client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
         self.client.wait_for_server()
-
-    def execute(self, userdata):
+        self.skip_requested = False
+            
+    def skipahead_cb(self, msg):
+        self.skip_requested = True
+        rospy.loginfo("Skip ahead requested.")
+        
+    def execute(self, userdata):    
+        self.skip_subscriber = rospy.Subscriber("/skip_ahead", String, self.skipahead_cb)
         global preemption_requested, cancel_preemption_requested
         if preemption_requested:
             preemption_requested = False  # Reset for next action
+            self.skip_subscriber.unregister()
             return 'preempted'  # Use the outcome that transitions to IDLE
         if cancel_preemption_requested:
             cancel_preemption_requested = False  # Reset the flag
+            self.skip_subscriber.unregister()
             return 'preempted'
     
         rospy.loginfo("Minor adjustment before retrying recognition.")
@@ -361,44 +391,49 @@ class MinorAdjustment(smach.State):
          
         if userdata.turn_counter == 0:
             if userdata.detect_code == 2: #left side
-                userdata.minor_pose.pose.position.x -= 0.25
+                userdata.minor_pose.pose.position.x -= 0.5
                 
             elif userdata.detect_code == 4:#right side
-                userdata.minor_pose.pose.position.x += 0.25
+                userdata.minor_pose.pose.position.x += 0.5
                 
             elif userdata.detect_code == 3: #middle
-                userdata.minor_pose.pose.position.y += 0.25
+                userdata.minor_pose.pose.position.y += 0.5
                 
         elif userdata.turn_counter == 1:
             if userdata.detect_code == 2: #left side
-                userdata.minor_pose.pose.position.y += 0.25
+                userdata.minor_pose.pose.position.y += 0.5
                 
             elif userdata.detect_code == 4:#right side
-                userdata.minor_pose.pose.position.y -= 0.25
+                userdata.minor_pose.pose.position.y -= 0.5
                 
             elif userdata.detect_code == 3: #middle
-                userdata.minor_pose.pose.position.x += 0.25
+                userdata.minor_pose.pose.position.x += 0.5
                 
         elif userdata.turn_counter == 2:
             if userdata.detect_code == 2: #left side
-                userdata.minor_pose.pose.position.x += 0.25
+                userdata.minor_pose.pose.position.x += 0.5
                 
             elif userdata.detect_code == 4:#right side
-                userdata.minor_pose.pose.position.x -= 0.25
+                userdata.minor_pose.pose.position.x -= 0.5
                 
             elif userdata.detect_code == 3: #middle
-                userdata.minor_pose.pose.position.y -= 0.25
+                userdata.minor_pose.pose.position.y -= 0.5
                 
         elif userdata.turn_counter == 3:
             if userdata.detect_code == 2: #left side
-                userdata.minor_pose.pose.position.y -= 0.25
+                userdata.minor_pose.pose.position.y -= 0.5
                 
             elif userdata.detect_code == 4:#right side
-                userdata.minor_pose.pose.position.y += 0.25
+                userdata.minor_pose.pose.position.y += 0.5
                 
             elif userdata.detect_code == 3: #middle
-                userdata.minor_pose.pose.position.x -= 0.25
+                userdata.minor_pose.pose.position.x -= 0.5
         
+        if self.skip_requested:
+            rospy.loginfo("Skip requested, proceeding to retry adjustment.")
+            self.skip_requested = False  # Reset the skip request flag
+            self.skip_subscriber.unregister()
+            return 'retry_adjustment'
         
         # After adjusting target_pose, send a new goal to move_base
         new_goal = MoveBaseGoal()
@@ -408,32 +443,38 @@ class MinorAdjustment(smach.State):
         
         # Send the new goal to move_base
         self.client.send_goal(new_goal)
-        self.client.wait_for_result(rospy.Duration(300.0))  # Adjust timeout as needed
-            
-        action_state = self.client.get_state()
-        if action_state == actionlib.GoalStatus.SUCCEEDED:
-            rospy.loginfo("Robot moved to the new position successfully.")
-            return 'retry_recognition'
-        elif action_state == actionlib.GoalStatus.ABORTED:
-            rospy.loginfo("Obstacle detected on the spot.")
-                
-            # Decide on the next action: retry with a new adjustment or handle as a failure
-            # For this example, we'll choose to retry
-            return 'retry_adjustment'
-        else:
-            rospy.loginfo("Failed to move the robot to the new position.")
-            return 'retry_adjustment'
         
+            
+        while not rospy.is_shutdown():
+            if self.skip_requested:
+                rospy.loginfo("Skip requested, cancelling current goal and proceeding to retry adjustment.")
+                self.skip_requested = False  # Reset the skip request flag
+                self.skip_subscriber.unregister()
+                return 'retry_adjustment'
 
+            if self.client.wait_for_result(rospy.Duration(0.5)):  # Check every 0.5 seconds
+                action_state = self.client.get_state()
+                if action_state == actionlib.GoalStatus.SUCCEEDED:
+                    rospy.loginfo("Robot moved to the new position successfully.")
+                    self.skip_subscriber.unregister()
+                    return 'retry_recognition'
+                elif action_state == actionlib.GoalStatus.ABORTED:
+                    rospy.loginfo("Obstacle detected on the spot.")
+                    self.skip_requested = False 
+                    self.skip_subscriber.unregister()
+                    return 'retry_adjustment'
+                else:
+                    rospy.loginfo("Failed to move the robot to the new position.")
+                    self.skip_subscriber.unregister()
+                    self.skip_requested = False 
+                    return 'retry_adjustment'
 
-
-
+ # State 4: Evaluate Detection   
 class Detection_0(smach.State):
     def __init__(self):
         smach.State.__init__(self, outcomes=['next_state', 'retry_recognition', 'minor_adjustment','failed'],
                              input_keys=['detected_pose', 'target_pose', 'turn_counter', 'minor_adj', 'minor_pose', 'minor_counter', 'detect_code'],
                              output_keys=['minor_counter', 'minor_pose','detect_code', 'minor_adj'])
-                             
         
         self.client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
         self.client.wait_for_server()
@@ -458,7 +499,7 @@ class Detection_0(smach.State):
         distance = math.sqrt(dx ** 2 + dy ** 2)
         rospy.loginfo(f"Distance to target: {distance} meters")
         
-        distance_threshold = 3.0  # Define your distance threshold (meters) 5, 4, 6, 7
+        distance_threshold = 2.5 # Define your distance threshold (meters) 5, 4, 6, 7
         upper_distance_threshold = 5.0
         if distance >= distance_threshold:
             if distance >= upper_distance_threshold:
@@ -519,12 +560,13 @@ class Detection_0(smach.State):
                 box_selected = False  # Reset box selection flag
                 return 'failed'
 
-
-
-
 def main():
     global action_client
     rospy.init_node('smach_planner_node')
+    
+    rospy.Subscriber("/rviz_panel/goal_name", String, rviz_panel_cb)
+    rospy.Subscriber("/move_base/cancel", GoalID, cancel_goal_cb)
+    
     
     action_client.wait_for_server()
     
@@ -608,7 +650,7 @@ def main():
         smach.StateMachine.add('MINOR_ADJUSTMENT', MinorAdjustment(), 
                                transitions={'preempted': 'PREEMPTED',
                                             'retry_recognition':'START_RECOGNITION_PROCEDURE', 
-                                            'retry_adjustment':'MINOR_ADJUSTMENT'},
+                                            'retry_adjustment':'ADJUST_POSITION_FOR_RECOGNITION'},
                                remapping={'turn_counter':'turn_counter', 
                                           'move_counter':'move_counter',
                                           'minor_counter':'minor_counter',
@@ -646,7 +688,5 @@ def main():
     else:
         rospy.loginfo("State machine completed successfully.")
     
-    
-
 if __name__ == '__main__':
     main()
