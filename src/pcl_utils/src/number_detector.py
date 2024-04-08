@@ -171,9 +171,9 @@ class NumberDetector:
 
         # sometime if box is too far, although detected, pointcloud cant find the distance, will return either at left/mid/right side of the robot
         else:
-            if average_u < 440:
+            if average_u < 540:
                 res.success_code = GetPoseResponse().FAILED_WITH_NUMBER_DETECTED_LEFT
-            elif average_u >= 440 and average_u <= 840:
+            elif average_u >= 540 and average_u <= 740:
                 res.success_code = GetPoseResponse().FAILED_WITH_NUMBER_DETECTED_MID
             else:
                 res.success_code = GetPoseResponse().FAILED_WITH_NUMBER_DETECTED_RIGHT
