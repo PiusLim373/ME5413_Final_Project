@@ -72,9 +72,11 @@ sudo apt install ros-noetic-librealsense2*
 sudo apt install ros-noetic-realsense2-*
 sudo apt install ros-noetic-spatio-temporal-voxel-layer
 sudo apt install ros-noetic-global-planner
+sudo apt install ros-noetic-dwa-local-planner
 sudo apt install ros-noetic-pcl-*
 sudo apt install ros-noetic-cv-bridge
 sudo apt install ros-noetic-smach-ros
+sudo apt install tesseract-ocr
 pip install pytesseract
 
 
@@ -134,7 +136,29 @@ roslaunch me5413_world manual.launch
 ![rviz_manual_image](src/me5413_world/media/rviz_manual.png)
 
 ### 2. Mapping
+#### 2.1 ALOAM Mapping
+```bash
+# Launch ALOAM Mapping
+roslaunch me5413_world aloam_mapping.launch
+```
+After finishing mapping, run the following command in the thrid terminal to save the map:
 
+```bash
+# Save the map as `my_map` in the `maps/` folder
+roscd me5413_world/maps/
+
+# This will periodically save .pcd map to the directory, use at the end of mapping to save space
+rosrun pcl_ros pointcloud_to_pcd input:=/laser_cloud_surround
+
+# Publish .pcd map to map topic 
+rosrun pcd2pgm pcd2topic _file_directory:="./" _file_name:=<latest .pcd map name>
+
+# Save the map in .pgm and .yaml format 
+rosrun map_server map_saver -f my_map map:=/map
+```
+
+![rviz_nmapping_image](src/me5413_world/media/rviz_aloam_mapping.png)
+#### 2.2 Gmapping
 After launching **Step 0**, in the second terminal:
 
 ```bash
