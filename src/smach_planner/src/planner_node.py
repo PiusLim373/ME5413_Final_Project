@@ -472,7 +472,7 @@ class MinorAdjustment(smach.State):
  # State 4: Evaluate Detection   
 class Detection_Process(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['success', 'retry_recognition', 'minor_adjustment','failed'],
+        smach.State.__init__(self, outcomes=['success', 'retry_recognition', 'minor_adjustment'],
                              input_keys=['detected_pose', 'target_pose', 'turn_counter', 'minor_adj', 'minor_pose', 'minor_counter', 'detect_code'],
                              output_keys=['minor_counter', 'minor_pose','detect_code', 'minor_adj'])
         
@@ -555,10 +555,8 @@ class Detection_Process(smach.State):
                 box_selected = False  # Reset box selection flag
                 return 'success'
             else:
-                rospy.loginfo("Failed to navigate to the detected goal.")
-                global_box_num = ""
-                box_selected = False  # Reset box selection flag
-                return 'failed'
+                rospy.loginfo("Succesful detection! Navigation to the detected goal aborted.")
+                return 'retry_recognition'
 
 # State 5: Success
 class Success(smach.State):
@@ -680,8 +678,7 @@ def main():
         smach.StateMachine.add('DETECTION_PROCESS', Detection_Process(), 
                        transitions={'success':'SUCCESS',
                                     'retry_recognition': 'ADJUST_POSITION_FOR_RECOGNITION',
-                                    'minor_adjustment':'MINOR_ADJUSTMENT',
-                                    'failed':'PREEMPTED'},
+                                    'minor_adjustment':'MINOR_ADJUSTMENT'},
                        remapping={'detected_pose': 'detected_pose', 
                                   'target_pose': 'target_pose',
                                   'turn_counter': 'turn_counter',
