@@ -23,6 +23,10 @@ namespace rviz_panel
         // Define ROS publisher
         this->pub_goal_ = nh_.advertise<std_msgs::String>("/rviz_panel/goal_name", 1);
         this->pub_respawn_ = nh_.advertise<std_msgs::Int16>("/rviz_panel/respawn_objects", 1);
+        this->movebase_cancel_goal_ = nh_.advertise<actionlib_msgs::GoalID>("/move_base/cancel", 1);
+        this->skip_forward_pub_ = nh_.advertise<std_msgs::String>("/skip_ahead", 1);
+        this->clear_costmap_client_ = nh_.serviceClient<std_srvs::Empty>("/move_base/clear_costmaps");
+        this->move_base_status_sub_ = nh_.subscribe("/move_base/status", 1, &simplePanel::moveBaseStatusCB, this);
         // sub_error_to_goal_ = nh_.subscribe("/interactive_tools/error_to_goal", 1, &GoalPublisherNode::goalPoseCallback, this);
 
         // Connect the clicked signals to slots
@@ -40,6 +44,9 @@ namespace rviz_panel
 
         connect(ui_->pushButton_regen, SIGNAL(clicked()), this, SLOT(on_button_regen_clicked()));
         connect(ui_->pushButton_clear, SIGNAL(clicked()), this, SLOT(on_button_clear_clicked()));
+        connect(ui_->pushButton_cancel_goal, SIGNAL(clicked()), this, SLOT(on_button_cancel_goal_clicked()));
+        connect(ui_->pushButton_skip_forward, SIGNAL(clicked()), this, SLOT(on_button_skip_forward_clicked()));
+        connect(ui_->pushButton_clear_costmap, SIGNAL(clicked()), this, SLOT(on_button_clear_costmap_clicked()));
 
         // Initialization
         goal_name_msg_.data = "";
@@ -127,6 +134,72 @@ namespace rviz_panel
         ui_->label_status->setText("Please select a goal pose");
         this->regen_cmd_msg_.data = 0;
         this->pub_respawn_.publish(this->regen_cmd_msg_);
+    }
+    void simplePanel::on_button_cancel_goal_clicked()
+    {
+        ROS_INFO_STREAM("Cancelling move base goal");
+        ui_->label_status->setText("Goal Cancelled, please select a goal pose");
+        actionlib_msgs::GoalID cancel_goal;
+        this->movebase_cancel_goal_.publish(cancel_goal);
+    }
+    void simplePanel::on_button_skip_forward_clicked()
+    {
+        ROS_INFO_STREAM("Called to skip forward a search");
+        std_msgs::String skip_forward_data;
+        this->skip_forward_pub_.publish(skip_forward_data);
+    }
+    void simplePanel::on_button_clear_costmap_clicked()
+    {
+        ROS_INFO_STREAM("Called to clear costmaps");
+        std_srvs::Empty empty_srv;
+        this->clear_costmap_client_.call(empty_srv);
+    }
+
+    void simplePanel::moveBaseStatusCB(const actionlib_msgs::GoalStatusArray::ConstPtr &msg)
+    {
+        if (msg->status_list.size())
+        {
+            int status = msg->status_list.back().status;
+            QString move_base_status = "";
+            switch (status)
+            {
+                case 0:
+                    move_base_status = "PENDING";
+                    break;
+                case 1:
+                    move_base_status = "ACTIVE";
+                    break;
+                case 2:
+                    move_base_status = "PREEMPTED";
+                    break;
+                case 3:
+                    move_base_status = "SUCCEEDED";
+                    break;
+                case 4:
+                    move_base_status = "ABORTED";
+                    break;
+                case 5:
+                    move_base_status = "REJECTED";
+                    break;
+                case 6:
+                    move_base_status = "PREEMPTING";
+                    break;
+                case 7:
+                    move_base_status = "RECALLING";
+                    break;
+                case 8:
+                    move_base_status = "RECALLED";
+                    break;
+                case 9:
+                    move_base_status = "LOST";
+                    break;
+                default:
+                    move_base_status = "Unknown";
+            }
+            ui_->move_base_status->setText("Move Base Status: " + move_base_status);
+        }
+        else
+            ui_->move_base_status->setText("Move Base Status: Unknown");
     }
 
     /**

@@ -20,6 +20,9 @@
 
 #include <std_msgs/Int16.h>
 #include <std_msgs/String.h>
+#include <std_srvs/Empty.h>
+#include <actionlib_msgs/GoalID.h>
+#include <actionlib_msgs/GoalStatusArray.h>
 
 namespace rviz_panel
 {
@@ -69,6 +72,12 @@ class simplePanel : public rviz::Panel
     // Contorl Buttons
     void on_button_regen_clicked();
     void on_button_clear_clicked();
+    void on_button_cancel_goal_clicked();
+    void on_button_skip_forward_clicked();
+    void on_button_clear_costmap_clicked();
+
+    // Subscriber cb
+    void moveBaseStatusCB(const actionlib_msgs::GoalStatusArray::ConstPtr& msg);
 
  protected:
   // UI pointer
@@ -77,6 +86,10 @@ class simplePanel : public rviz::Panel
   ros::NodeHandle nh_;
   ros::Publisher pub_goal_;
   ros::Publisher pub_respawn_;
+  ros::Publisher movebase_cancel_goal_;
+  ros::Publisher skip_forward_pub_;
+  ros::ServiceClient clear_costmap_client_;
+  ros::Subscriber move_base_status_sub_;
   std_msgs::String goal_name_msg_;
   std_msgs::Int16 regen_cmd_msg_;
 };

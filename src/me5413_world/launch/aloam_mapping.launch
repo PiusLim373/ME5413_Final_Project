@@ -1,0 +1,9 @@
+<launch>
+
+  <!-- Connect the robot to a keyboard teleop controller -->
+  <node name="teleop_twist_keyboard" pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" output="screen" respawn="true"/>
+  
+  <!-- Launch GMapping -->
+  <include file="$(find aloam_velodyne)/launch/aloam_velodyne_VLP_16.launch" />
+
+</launch>

@@ -266,6 +266,7 @@
   <!-- 
     Add Cameras. 
     - JACKAL_FLEA3
+    - intel realsense
     - JACKAL_STEREO_FLEA3
     - JACKAL_BB2
   -->
@@ -275,7 +276,7 @@
   <xacro:include filename="$(find pointgrey_camera_description)/urdf/pointgrey_flea3.urdf.xacro" />
 
   <!-- If enabled, generate the flea3 camera payload with a tilt of 30 degrees. -->
-  <xacro:if value="$(optenv JACKAL_FLEA3 1)">
+  <xacro:if value="$(optenv JACKAL_FLEA3 0)">
     <xacro:property name="name" value="$(optenv JACKAL_FLEA3_NAME front)" />
     <xacro:property name="tilt" value="$(optenv JACKAL_FLEA3_TILT 0.)" />
     <xacro:property name="tower" value="$(optenv JACKAL_FLEA3_TOWER 1)" />
@@ -321,6 +322,15 @@
         <child link="${prefix}_camera" />
       </joint>
     </xacro:unless>
+  </xacro:if>
+
+  <xacro:include filename="$(find jackal_description)/urdf/accessories/_d435.urdf.xacro" />
+  <!-- If enabled, generate the intel realsense d435 camera. -->
+
+  <xacro:if value="$(optenv intel_realsense 1)">
+    <xacro:sensor_d435 name="camera_front" topics_ns="camera_front" parent="base_link">
+      <origin xyz="0.12 0.0 0.184" rpy="0.0 0.0 0.0"/>
+    </xacro:sensor_d435>
   </xacro:if>
 
   <xacro:include filename="$(find jackal_description)/urdf/accessories/stereo_camera_mount.urdf.xacro" />
